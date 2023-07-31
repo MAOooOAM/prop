@@ -112,7 +112,7 @@ template <typename A, typename B> B explosion(Negation<A> na, A a) { return na(a
 
 template <typename A> A double_negation_elimination(Negation<Negation<A>> nna) {
   return peirce<A, Negation<A>>([nna](LongImplies<A, A, False> aaf) -> A {
-    return explosion<Negation<A>, A>(nna, [aaf](A a) -> False { return aaf(a)(a); });
+    return nna([aaf](A a) -> False { return aaf(a)(a); });
   });
 }
 ```
