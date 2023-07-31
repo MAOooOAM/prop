@@ -22,7 +22,7 @@ template <typename A, typename B> struct Implies {
   Type func;
   Implies() = delete;
   Implies(False f) : func([f](A) -> B { return f; }) {}
-  template <typename T> Implies(T&& t) : func(t) {}
+  template <typename T> Implies(T t) : func(t) {}
   B operator()(A a) const { return func(a); }
 };
 
@@ -37,7 +37,7 @@ template <typename A, typename... As> struct LongImpliesImpl<A, As...> {
 // (~A)
 template <typename A> using Negation = Implies<A, False>;
 
-// (A1 & A2 & ... & An)
+// (A1 /\ A2 /\ ... /\ An)
 template <typename... As> struct Conjunction {
   using Type = std::tuple<As...>;
   Type tup;
@@ -46,6 +46,9 @@ template <typename... As> struct Conjunction {
   Conjunction(As... as) : tup(as...) {}
   template <size_t N> std::tuple_element_t<N, Type> get() const { return std::get<N>(tup); }
 };
+
+// (A1 \/ A2 \/ ... \/ An)
+template <typename... As> using Disjunction = Negation<Conjunction<Negation<As>...>>;
 
 // A -> (B -> A)
 template <typename A, typename B> using Then1 = LongImplies<A, B, A>;
@@ -96,12 +99,19 @@ inline Implies<A, C> syllogism(Implies<B, C> b2c, Implies<A, B> a2b) {
 template <typename A, typename B> inline B explosion(A a, Negation<A> na) { return na(a); }
 template <typename A, typename B> inline B explosion(Negation<A> na, A a) { return na(a); }
 
-// [non-intuitive] A -> ~~A
+// [non-intuitive] A |- ~~A
 template <typename A> inline A double_negation_elimination(Negation<Negation<A>> nna) {
   return peirce<A, Negation<A>>([nna](LongImplies<A, A, False> aaf) -> A {
     return explosion<Negation<A>, A>(nna, [aaf](A a) -> False { return aaf(a)(a); });
   });
 }
+
+// [non-intuitive] |- A \/ ~A
+template <typename A> inline Disjunction<A, Negation<A>> exclusive_middle() {
+  return [](Conjunction<Negation<A>, Negation<Negation<A>>> na_nna) -> False {
+    return na_nna.template get<1>()(na_nna.template get<0>());
+  };
+};
 
 
 }  // namespace classical
